@@ -1,0 +1,2 @@
+class UrgencyImportanceOutOfRangeError(Exception):
+    pass

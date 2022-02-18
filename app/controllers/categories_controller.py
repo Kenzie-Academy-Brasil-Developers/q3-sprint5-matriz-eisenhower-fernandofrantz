@@ -1,9 +1,11 @@
-import imp
+from sqlite3 import ProgrammingError
 from flask import current_app, jsonify, request
 from http import HTTPStatus
 from app.models.categories_model import CategoryModel
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm.exc import UnmappedInstanceError
+
+from app.models.tasks_model import TasksModel
 
 def post_category():
     try:
@@ -17,7 +19,8 @@ def post_category():
         return jsonify(category.serializer()), HTTPStatus.CREATED
 
     except IntegrityError:
-        return {"msg": "category already exists!"}
+        return {"msg": "category already exists!"}, HTTPStatus.CONFLICT
+
 
 def patch_category(id):
     try:
@@ -51,7 +54,8 @@ def patch_category(id):
         current_app.db.session.add(category_to_patch)
         current_app.db.session.commit()
 
-        return '', HTTPStatus.OK
+
+        return category_to_patch.serializer(), HTTPStatus.OK
 
     except AttributeError:
         return {"msg": "category not found!"}, HTTPStatus.NOT_FOUND
@@ -69,4 +73,36 @@ def delete_category(id):
         return {"msg": "category not found!"}, HTTPStatus.NOT_FOUND
         
 def get_all():
-    pass
+    try:
+        tasks = (TasksModel.query.all())
+
+        task_serializer = [
+            {
+            "id": task.id,
+            "name": task.name,
+            "discription": task.discription,
+            "duration": task.duration,
+            "classification": task.classification,
+            "categories": task.categories.split(' '),
+            } for task in tasks
+        ]
+
+        categories = (CategoryModel.query.all())
+
+        category_serializer = [
+            {
+                "id": category.id,
+                "name": category.name,
+                "discription": category.discription,
+                #  if selected_tasks.categories[0] == category.name
+                "tasks": [selected_tasks for selected_tasks in task_serializer if category.name in selected_tasks['categories']]
+            } for category in categories
+        ]
+
+        
+
+        return jsonify(category_serializer), HTTPStatus.OK
+
+
+    except ProgrammingError:
+        {"error": "no data found"}
